@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using Beerhall.Data;
 using Beerhall.Models.Domain;
 using Beerhall.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -74,6 +73,14 @@ namespace Beerhall.Tests.Controllers
             Assert.Equal(3, locationsInViewData.Count());
         }
 
+        [Fact]
+        public void Edit_UnknownBrewer_ReturnsNotFound()
+        {
+            _brewerRepository.Setup(m => m.GetBy(1)).Returns((Brewer)null);
+            IActionResult action = _controller.Edit(1);
+            Assert.IsType<NotFoundResult>(action);
+        }
+
         #endregion
 
         #region -- Edit POST --
@@ -126,6 +133,34 @@ namespace Beerhall.Tests.Controllers
             _brewerRepository.Verify(m => m.SaveChanges(), Times.Never());
         }
 
+        [Fact]
+        public void Edit_ModelStateErrors_PassesViewModelAndViewDataToEditView()
+        {
+            _locationRepository.Setup(m => m.GetAll()).Returns(_dummyContext.Locations);
+            BrewerEditViewModel brewerEvm = new BrewerEditViewModel(_dummyContext.Bavik);
+            _controller.ModelState.AddModelError("", "Error message");
+            ViewResult result = _controller.Edit(brewerEvm, 1) as ViewResult;
+            Assert.Equal("Edit", result?.ViewName);
+            Assert.Equal(brewerEvm, result?.Model);
+            Assert.Equal(3, (result?.ViewData["Locations"] as SelectList)?.Count());
+            Assert.True((bool)result?.ViewData["IsEdit"]);
+        }
+
+        [Fact]
+        public void Edit_ModelStateErrors_DoesNotChangeNorPersistsBrewer()
+        {
+            Brewer bavik = _dummyContext.Bavik;
+            _brewerRepository.Setup(m => m.GetBy(1)).Returns(bavik);
+            BrewerEditViewModel newBrewerEvm = new BrewerEditViewModel(bavik)
+            {
+                Name = "New name"
+            };
+            _controller.ModelState.AddModelError("", "Error message");
+            ViewResult result = _controller.Edit(newBrewerEvm, 1) as ViewResult;
+            Assert.Equal("Bavik", bavik.Name);
+            _brewerRepository.Verify(m => m.SaveChanges(), Times.Never());
+        }
+
         #endregion
 
         #region -- Create GET --
@@ -134,7 +169,7 @@ namespace Beerhall.Tests.Controllers
         {
             IActionResult action = _controller.Create();
             BrewerEditViewModel brewerEvm = (action as ViewResult)?.Model as BrewerEditViewModel;
-           // Assert.Equal(0, brewerEvm?.BrewerId);
+            // Assert.Equal(0, brewerEvm?.BrewerId);
         }
 
         [Fact]
@@ -192,6 +227,30 @@ namespace Beerhall.Tests.Controllers
             _brewerRepository.Verify(m => m.SaveChanges(), Times.Never());
         }
 
+        [Fact]
+        public void Create_ModelStateErrors_PassesViewModelAndViewDataToEditView()
+        {
+            _locationRepository.Setup(m => m.GetAll()).Returns(_dummyContext.Locations);
+            BrewerEditViewModel brewerEvm = new BrewerEditViewModel(_dummyContext.Bavik);
+            _controller.ModelState.AddModelError("", "Error message");
+            ViewResult result = _controller.Create(brewerEvm) as ViewResult;
+            Assert.Equal("Edit", result?.ViewName);
+            Assert.Equal(brewerEvm, result?.Model);
+            Assert.Equal(3, (result?.ViewData["Locations"] as SelectList)?.Count());
+            Assert.False((bool)result?.ViewData["IsEdit"]);
+        }
+
+        [Fact]
+        public void Create_ModelStateErrors_DoesNotCreateNorPersistsBrewer()
+        {
+            _brewerRepository.Setup(m => m.GetBy(1)).Returns(_dummyContext.Bavik);
+            BrewerEditViewModel newBrewerEvm = new BrewerEditViewModel(new Brewer());
+            _controller.ModelState.AddModelError("", "Error message");
+            ViewResult result = _controller.Create(newBrewerEvm) as ViewResult;
+            _brewerRepository.Verify(m => m.Add(It.IsAny<Brewer>()), Times.Never());
+            _brewerRepository.Verify(m => m.SaveChanges(), Times.Never());
+        }
+
         #endregion
 
         #region -- Delete GET --
@@ -203,6 +262,15 @@ namespace Beerhall.Tests.Controllers
             IActionResult action = _controller.Delete(1);
             Assert.Equal("Bavik", (action as ViewResult)?.ViewData["name"]);
         }
+
+        [Fact]
+        public void Delete_UnknownBrewer_ReturnsNotFound()
+        {
+            _brewerRepository.Setup(m => m.GetBy(1)).Returns((Brewer)null);
+            IActionResult action = _controller.Delete(1);
+            Assert.IsType<NotFoundResult>(action);
+        }
+
         #endregion
 
         #region -- Delete POST --
@@ -225,7 +293,7 @@ namespace Beerhall.Tests.Controllers
             _brewerRepository.Verify(m => m.Delete(It.IsAny<Brewer>()), Times.Once());
             _brewerRepository.Verify(m => m.SaveChanges(), Times.Once());
         }
-         #endregion
+        #endregion
 
     }
 }
