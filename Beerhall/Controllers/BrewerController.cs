@@ -114,6 +114,9 @@ namespace Beerhall.Controllers
             brewer.Location = brewerEditViewModel.PostalCode == null
                 ? null
                 : _locationRepository.GetBy(brewerEditViewModel.PostalCode);
+            brewer.ContactEmail = brewerEditViewModel.ContactEmail;
+            brewer.DateEstablished = brewerEditViewModel.DateEstablished;
+            brewer.Description = brewerEditViewModel.Description;
             brewer.Turnover = brewerEditViewModel.Turnover;
         }
     }
